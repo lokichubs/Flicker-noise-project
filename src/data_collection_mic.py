@@ -1,21 +1,27 @@
+import Adafruit_ADS1x15
 import time
 import csv
-import board
-import busio
-from adafruit_ads1x15.ads1115 import ADS1115
-from adafruit_ads1x15.analog_in import AnalogIn
 
-# Initialize I2C bus and ADC
-i2c = busio.I2C(board.SCL, board.SDA)
-ads = ADS1115(i2c)
-ads.gain = 1  # Gain=1 for 0-4.096V input range
+# Initialize ADS1115
+adc = Adafruit_ADS1x15.ADS1115(busnum=1)
+GAIN = 1
+FSR = 4.096  # Full-scale voltage for gain=1
 
-with open('mic_data.csv', 'w', newline='') as csvfile:
+# Generate filename with timestamp DDMM:HH:MM:SS
+file_timestamp = time.strftime("%d%m:%H:%M:%S", time.localtime())
+filename = f"mic_data_{file_timestamp}.csv"
+
+with open(filename, 'w', newline='') as csvfile:
     writer = csv.writer(csvfile)
-    writer.writerow(['timestamp', 'mic_value'])
+    writer.writerow(['timestamp', 'mic_value', 'voltage'])
+    print(f"Logging data to {filename}")
+    print("Reading ADS1115 values, press Ctrl+C to stop...")
+
     for _ in range(86400):  # 24 hours at 1 sample/sec
-        chan = AnalogIn(ads, ADS1115.P0)  # AIN0
-        mic_value = chan.value
-        print(f"Mic value: {mic_value}")
-        writer.writerow([time.time(), mic_value])
+        # Format timestamp as DDMM:HH:MM:SS
+        timestamp = time.strftime("%d%m:%H:%M:%S", time.localtime())
+        value = adc.read_adc(0, gain=GAIN)
+        voltage = (value / 32767) * FSR
+        print(f"Timestamp: {timestamp}, Raw: {value}, Voltage: {voltage:.4f} V")
+        writer.writerow([timestamp, value, voltage])
         time.sleep(1)
